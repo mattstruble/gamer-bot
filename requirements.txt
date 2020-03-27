@@ -1,1 +1,2 @@
 psycopg2==2.8.4
+configparser==4.0.2
