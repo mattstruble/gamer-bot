@@ -1,0 +1,13 @@
+[Discord]
+client_id=id
+client_secret=secret
+
+[PostgreSQL]
+db_user=user
+db_password=password
+host=127.0.0.1
+port=5432
+database=postgres_db
+
+[Gamerbot]
+phrases=['gamer', 'bot']
