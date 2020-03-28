@@ -11,4 +11,4 @@ port=5432
 database=postgres_db
 
 [Gamerbot]
-phrases=['gamer', 'bot']
+phrases=gamer,gamers in chat
