@@ -60,6 +60,8 @@ class MESSAGES(_TABLE):
     columns = ["id", "message"]
     non_pk_columns = columns[1:]
 
+    ID = "id"
+    MESSAGE = "message"
 
 class PHRASES(_TABLE):
     name = "phrases"

@@ -137,9 +137,9 @@ class _SelectDatabase(_FetchableDatabase):
             self.values[value_name] = conditional.value
 
             # https://www.psycopg.org/docs/usage.html#query-parameters
-            self.sql += " {} {} {} %({})s".format(operator, conditional.column, conditional.conditional, value_name)
+            self.sql += " {} \"{}\".\"{}\" {} %({})s".format(operator, self.table.name, conditional.column, conditional.conditional, value_name)
         else:
-            self.sql += " {} {} {}".format(operator, conditional.column, conditional.conditional)
+            self.sql += " {} \"{}\".\"{}\" {}".format(operator, self.table.name, conditional.column, conditional.conditional)
 
     def WHERE(self, conditional):
         self._construct_logical_sql('WHERE', conditional)
@@ -183,7 +183,7 @@ class _InsertDatabase(Database):
         for column in self.insert_columns:
             self._validate_column(column)
 
-        self.sql = "INSERT INTO \"{}\" ({}) VALUES ".format(table.name, ','.join(insert_columns))
+        self.sql = "INSERT INTO \"{}\" ({}) VALUES ".format(table.name, ','.join('"{}"'.format(c) for c in insert_columns))
 
     def _build_mogrifies(self):
         mogrifies = (self.cursor.mogrify(self.value_placeholder, tuple(x)) for x in self.inserts)

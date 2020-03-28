@@ -1,6 +1,7 @@
 [Discord]
 client_id=id
 client_secret=secret
+token=token
 
 [PostgreSQL]
 db_user=user
