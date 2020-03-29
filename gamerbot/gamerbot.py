@@ -10,7 +10,7 @@ from .database.tables import *
 from .util.fingerprint import Fingerprint
 
 
-class GamerBot(discord.Client):
+class GamerBot(discord.AutoShardedClient):
 
     def __init__(self, connection, phrases, loop=None, **options):
         super().__init__(loop=loop, options=options)
