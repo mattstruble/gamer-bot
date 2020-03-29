@@ -1,5 +1,3 @@
-import datetime
-
 import discord
 
 from .database.conditionals import In, Eq
@@ -72,23 +70,52 @@ class GamerBot(discord.AutoShardedClient):
 
         return matched
 
+    def _ingest_user(self, db, user):
+        user_name_id = ingest_if_not_exist_returning(db, USER_NAMES, {USER_NAMES.USER_NAME:user.name}, [USER_NAMES.ID])
+        user_id = ingest_if_not_exist_returning(db, USERS, {USERS.UID:user.id, USERS.USER_NAME_ID: user_name_id}, [USERS.UID])
+
+        return user_id
+
+    def _ingest_guild(self, db, guild):
+        guild_name_id = ingest_if_not_exist_returning(db, GUILD_NAMES, {GUILD_NAMES.GUILD_NAME:guild.name}, [GUILD_NAMES.ID])
+        guild_id = ingest_if_not_exist_returning(db, GUILDS, {GUILDS.UID:guild.id, GUILDS.GUILD_NAME_ID:guild_name_id}, [GUILDS.UID])
+
+        return guild_id
+
+    def _ingest_channel(self, db, channel):
+        channel_name_id = ingest_if_not_exist_returning(db, CHANNEL_NAMES, {CHANNEL_NAMES.CHANNEL_NAME:channel.name}, [CHANNEL_NAMES.ID])
+        channel_id = ingest_if_not_exist_returning(db, CHANNELS, {CHANNELS.UID:channel.id, CHANNELS.GUILD_ID:channel.guild.id, CHANNELS.CHANNEL_NAME_ID:channel_name_id}, [CHANNELS.UID])
+
+        return channel_id
+
     def _ingest_message(self, db, message):
         phrase_ids = self._get_matched_phrase_ids(message.content, db)
 
+        # todo: user, guild, and channels should be ingested when bot joins guild not every message it receives
+        user_id = self._ingest_user(db, message.author)
+        guild_id = self._ingest_guild(db, message.guild)
+        channel_id = self._ingest_channel(db, message.channel)
+
+        message_content_id = ingest_if_not_exist_returning(db, MESSAGE_CONTENT, {MESSAGE_CONTENT.CONTENT:message.content}, [MESSAGE_CONTENT.ID])
+
+        message_record = {
+            MESSAGES.UID: message.id,
+            MESSAGES.CHANNEL_ID: message.channel.id,
+            MESSAGES.MESSAGE_CONTENT_ID: message_content_id,
+            MESSAGES.CREATED_AT: message.created_at
+        }
+
+        message_id = ingest_if_not_exist_returning(db, MESSAGES, message_record, [MESSAGES.UID])
+
         if len(phrase_ids) > 0:
-            prepared_log = db.insertInto(LOGS, LOGS.PHRASE_ID, LOGS.USER_ID, LOGS.CHANNEL_ID, LOGS.MESSAGE_ID,
-                                         LOGS.REPORTED)
 
-            user_id = ingest_if_not_exist_returning(db, USERS, {USERS.USER: message.author.name}, [USERS.ID])
-            guild_id = ingest_if_not_exist_returning(db, GUILDS, {GUILDS.GUILD: message.guild.name}, [GUILDS.ID])
-            channel_id = ingest_if_not_exist_returning(db, CHANNELS, {CHANNELS.CHANNEL: message.channel.name,
-                                                                      CHANNELS.GUILD_ID: guild_id}, [CHANNELS.ID])
-            message_id = ingest_if_not_exist_returning(db, MESSAGES, {MESSAGES.MESSAGE: message.content}, [MESSAGES.ID])
-
-            reported = datetime.datetime.now()
+            prepared_log = db.insertInto(USER_MATCHED_PHRASES, USER_MATCHED_PHRASES.PHRASE_ID, USER_MATCHED_PHRASES.USER_ID,
+                                         USER_MATCHED_PHRASES.GUILD_ID, USER_MATCHED_PHRASES.CHANNEL_ID, USER_MATCHED_PHRASES.MESSAGE_ID,
+                                         USER_MATCHED_PHRASES.MATCHES)
 
             for phrase_id in phrase_ids:
-                prepared_log = prepared_log.prepare(phrase_id, user_id, channel_id, message_id, reported)
+                # todo: replace matches with count of matches in message
+                prepared_log = prepared_log.prepare(phrase_id, user_id, guild_id, channel_id, message_id, 1)
 
             prepared_log.execute()
             self.db_connection.commit()
