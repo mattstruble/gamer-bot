@@ -29,7 +29,7 @@ CREATE TABLE "fingerprints" (
 
 
 CREATE TABLE "users" (
-	"uid" bigint NOT NULL,
+	"uid" bigint NOT NULL UNIQUE,
 	"user_name_id" integer NOT NULL
 ) WITH (
   OIDS=FALSE
@@ -38,7 +38,7 @@ CREATE TABLE "users" (
 
 
 CREATE TABLE "channels" (
-	"uid" bigint NOT NULL,
+	"uid" bigint NOT NULL UNIQUE,
 	"guild_id" bigint NOT NULL,
 	"channel_name_id" integer NOT NULL
 ) WITH (
@@ -48,7 +48,7 @@ CREATE TABLE "channels" (
 
 
 CREATE TABLE "guilds" (
-	"uid" bigint NOT NULL,
+	"uid" bigint NOT NULL UNIQUE,
 	"guild_name_id" integer NOT NULL
 ) WITH (
   OIDS=FALSE
@@ -87,7 +87,7 @@ CREATE TABLE "guild_names" (
 
 
 CREATE TABLE "messages" (
-	"uid" bigint NOT NULL,
+	"uid" bigint NOT NULL UNIQUE,
 	"channel_id" bigint NOT NULL,
 	"message_content_id" integer NOT NULL,
 	"created_at" TIMESTAMP NOT NULL
@@ -149,6 +149,7 @@ ALTER TABLE "user_matched_phrases" ADD CONSTRAINT "user_matched_phrases_fk4" FOR
 
 
 
+
 CREATE INDEX "idx_phrase" ON "phrases"("phrase");
 CREATE INDEX "idx_fingerprint" ON "fingerprints"("fingerprint");
 CREATE INDEX "idx_phrase_fingerprint_bridge_fingerprint_id" ON "phrase_fingerprint_bridge"("fingerprint_id");
@@ -166,8 +167,8 @@ CREATE INDEX "idx_channels_guild_id" ON "channels"("guild_id");
 
 CREATE INDEX "idx_message_content" ON "message_content"("content");
 CREATE INDEX "idx_messages_uid" ON "messages"("uid");
-CREATE INDEX "idx_messages_channel_id" ON "message"("channel_id");
-CREATE INDEX "idx_messages_created_at" ON "message"("created_at");
+CREATE INDEX "idx_messages_channel_id" ON "messages"("channel_id");
+CREATE INDEX "idx_messages_created_at" ON "messages"("created_at");
 
 CREATE INDEX "idx_user_matched_phrases_phrase_id" ON "user_matched_phrases"("phrase_id");
 CREATE INDEX "idx_user_matched_phrases_user_id" ON "user_matched_phrases"("user_id");
