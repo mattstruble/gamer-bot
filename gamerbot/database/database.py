@@ -39,6 +39,9 @@ class Database(object):
         self.sql = ""
         self.values = {}
 
+    def commit(self):
+        self.connection.commit()
+
     def selectFrom(self, table):
         select = _SelectDatabase(self.connection, "*")
         select = select.FROM(table)
@@ -83,6 +86,13 @@ class _FetchableDatabase(Database):
 
     def orderBy(self, *orderings):
         self.sql += _Ordering(self, orderings).to_sql()
+        return self
+
+    def LIMIT(self, count):
+        if not isinstance(count, int):
+            raise ValueError("Count needs to be an integer.")
+
+        self.sql += " LIMIT {}".format(count)
         return self
 
     def _gen_result(self, value):
