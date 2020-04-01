@@ -116,7 +116,6 @@ class GamerBot(discord.AutoShardedClient):
                                          USER_MATCHED_PHRASES.MATCHES)
 
             for phrase_id in matched_ids.keys():
-                # todo: replace matches with count of matches in message
                 prepared_log = prepared_log.prepare(phrase_id, message.author.id, message.guild.id, message.channel.id, message_id, matched_ids[phrase_id])
 
             prepared_log.execute()
@@ -250,6 +249,8 @@ class GamerBot(discord.AutoShardedClient):
 
         last_message_time = db.select(MESSAGES.CREATED_AT).FROM(MESSAGES).WHERE(Eq(MESSAGES.CHANNEL_ID, channel.id))\
             .orderBy((MESSAGES.CREATED_AT, Desc)).LIMIT(1).fetchone()
+
+        print(channel.name, last_message_time)
 
         async with channel.typing(): # scanning history could be a long process, show typing as the bot "thinking"
             async for message in channel.history(after=last_message_time, oldest_first=True): # iterate over all channel history from last message
