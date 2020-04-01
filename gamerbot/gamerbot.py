@@ -251,12 +251,18 @@ class GamerBot(discord.AutoShardedClient):
             .orderBy((MESSAGES.CREATED_AT, Desc)).LIMIT(1).fetchone()
 
         async with channel.typing(): # scanning history could be a long process, show typing as the bot "thinking"
-            async for message in channel.history(after=last_message_time, oldest_first=True): # iterate over all channel history from last message
+            for message in await channel.history(limit=None, after=last_message_time, oldest_first=True).flatten(): # iterate over all channel history from last message
                 if not self._is_command_message(message):
                     self._ingest_message(db, message)
 
     async def on_ready(self):
         db = Database(self.db_connection)
+
+        ingested_guilds = []
+        for channel in self.get_all_channels():
+            if channel.guild.id not in ingested_guilds:
+                await self.on_guild_join(channel.guild)
+                ingested_guilds.append(channel.guild.id)
 
         for channel in self.get_all_channels():
             await self._ingest_channel_history(db, channel)
