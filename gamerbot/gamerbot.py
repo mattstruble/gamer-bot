@@ -190,10 +190,6 @@ class GamerBot(discord.AutoShardedClient):
 
                 message += "\n\n"
 
-
-
-
-
         return message
 
 
