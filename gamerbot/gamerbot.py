@@ -135,18 +135,20 @@ class GamerBot(discord.AutoShardedClient):
         top_user_row = db.select(USER_MATCHED_PHRASES.USER_ID, Sum(USER_MATCHED_PHRASES.MATCHES)).FROM(
             USER_MATCHED_PHRASES) \
             .WHERE(conditional) \
-            .groupBy(USER_MATCHED_PHRASES.USER_ID).orderBy(("sum", Desc)).LIMIT(1).fetchone()
+            .groupBy(USER_MATCHED_PHRASES.USER_ID).orderBy(("sum", Desc)).LIMIT(3).fetchmany(3)
 
         if top_user_row is None:
             return no_match_string
 
-        top_user = self.get_user(top_user_row[USER_MATCHED_PHRASES.USER_ID])
+        top_user = self.get_user(top_user_row[0][USER_MATCHED_PHRASES.USER_ID])
 
-        message = "The top GAMER of this {} is {} with a total count of: **{}**".format(location_str, top_user.mention,
-                                                                                            top_user_row['sum'])
+        message = "The top GAMER of this {} is {} with a total count of: **{}**\n\n".format(location_str, top_user.mention,
+                                                                                            top_user_row[0]['sum'])
 
-        message += "\n\nTop Phrases:"
-        message += self._get_user_stats(db, top_user.id, conditional)
+        for stat in top_user_row:
+            message += "{}: **{}**".format(self.get_user(stat[USER_MATCHED_PHRASES.USER_ID]).mention, stat['sum'])
+            message += self._get_user_stats(db, stat[USER_MATCHED_PHRASES.USER_ID], conditional)
+            message += "\n\n"
 
         return message
 
