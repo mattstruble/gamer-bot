@@ -66,6 +66,12 @@ class GamerBot(discord.AutoShardedClient):
             if count > 0:
                 matched[phrase_id] = count
             else:
+                try :
+                    if len(self.fingerprint.generate(content)) == 0:
+                        return
+                except:
+                    return
+
                 fingerprints = [x[0] for x in self.fingerprint.generate(content)]
 
                 if len(fingerprints) == 0:
@@ -102,7 +108,7 @@ class GamerBot(discord.AutoShardedClient):
 
         message_id = ingest_if_not_exist_returning(db, MESSAGES, message_record, [MESSAGES.UID])
 
-        if len(matched_ids) > 0:
+        if matched_ids is not None and len(matched_ids) > 0:
             prepared_log = db.insertInto(USER_MATCHED_PHRASES, USER_MATCHED_PHRASES.PHRASE_ID, USER_MATCHED_PHRASES.USER_ID,
                                          USER_MATCHED_PHRASES.GUILD_ID, USER_MATCHED_PHRASES.CHANNEL_ID, USER_MATCHED_PHRASES.MESSAGE_ID,
                                          USER_MATCHED_PHRASES.MATCHES)
