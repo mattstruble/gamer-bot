@@ -37,7 +37,7 @@ class GamerBot(discord.AutoShardedClient):
         db = Database(self.db_connection)
 
         for phrase in phrases:
-            phrase_id = ingest_if_not_exist_returning(db, PHRASES, {PHRASES.PHRASE:phrase}, [PHRASES.ID])
+            phrase_id = ingest_if_not_exist_returning(db, PHRASES, {PHRASES.PHRASE:phrase.lower()}, [PHRASES.ID])
             self.phrase_dict[phrase_id] = phrase
 
             fingerprints = self.fingerprint.generate(phrase)
@@ -54,6 +54,8 @@ class GamerBot(discord.AutoShardedClient):
         self.db_connection.commit()
 
     def _get_matched_phrase_ids(self, content, db):
+        content = content.lower()
+
         phrases = db.selectFrom(PHRASES).fetchall()
 
         matched = {}
