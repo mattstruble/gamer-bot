@@ -1,9 +1,9 @@
 import discord
 
-from .database.conditionals import In, Eq
+from .database.conditionals import Eq
 from .database.database import Database, Sum
 from .database.functions import ingest_if_not_exist_returning, ingest_if_not_exist
-from .database.ordering import Asc, Desc
+from .database.ordering import Desc
 from .database.tables import *
 from .util.fingerprint import Fingerprint
 
@@ -23,7 +23,7 @@ class GamerBot(discord.AutoShardedClient):
     def __init__(self, connection, phrases, loop=None, **options):
         super().__init__(loop=loop, options=options)
         self.phrase_dict = {}
-        self.percent_match = .8
+        self.percent_match = .9
 
         min_str_len = len(min(phrases, key=len))
 
@@ -67,29 +67,29 @@ class GamerBot(discord.AutoShardedClient):
             count = content.count(phrase)
             if count > 0:
                 matched[phrase_id] = count
-            else:
-                try :
-                    if len(self.fingerprint.generate(content)) == 0:
-                        return
-                except:
-                    return
-
-                fingerprints = [x[0] for x in self.fingerprint.generate(content)]
-
-                if len(fingerprints) == 0:
-                    continue
-
-                message_fingerprints_ids = db.select(FINGERPRINTS.ID).FROM(FINGERPRINTS) \
-                    .WHERE(In(FINGERPRINTS.FINGERPRINT, fingerprints)).fetchall()
-
-                phrase_fingerprints_ids = db.select(PHRASE_FINGERPRINT_BRIDGE.FINGERPRINT_ID).FROM(PHRASE_FINGERPRINT_BRIDGE) \
-                    .WHERE(Eq(PHRASE_FINGERPRINT_BRIDGE.PHRASE_ID, phrase_id)) \
-                    .orderBy((PHRASE_FINGERPRINT_BRIDGE.LOCATION, Asc)).fetchall()
-
-                matching = set(message_fingerprints_ids) & set(phrase_fingerprints_ids)
-
-                if len(matching) > len(phrase_fingerprints_ids) * self.percent_match:
-                    matched[phrase_id] = 1 # todo: determine way to count fingerprint matches
+            # else:
+            #     try :
+            #         if len(self.fingerprint.generate(content)) == 0:
+            #             return
+            #     except:
+            #         return
+            #
+            #     fingerprints = [x[0] for x in self.fingerprint.generate(content)]
+            #
+            #     if len(fingerprints) == 0:
+            #         continue
+            #
+            #     message_fingerprints_ids = db.select(FINGERPRINTS.ID).FROM(FINGERPRINTS) \
+            #         .WHERE(In(FINGERPRINTS.FINGERPRINT, fingerprints)).fetchall()
+            #
+            #     phrase_fingerprints_ids = db.select(PHRASE_FINGERPRINT_BRIDGE.FINGERPRINT_ID).FROM(PHRASE_FINGERPRINT_BRIDGE) \
+            #         .WHERE(Eq(PHRASE_FINGERPRINT_BRIDGE.PHRASE_ID, phrase_id)) \
+            #         .orderBy((PHRASE_FINGERPRINT_BRIDGE.LOCATION, Asc)).fetchall()
+            #
+            #     matching = set(message_fingerprints_ids) & set(phrase_fingerprints_ids)
+            #
+            #     if len(matching) > len(phrase_fingerprints_ids) * self.percent_match:
+            #         matched[phrase_id] = 1 # todo: determine way to count fingerprint matches
 
         return matched
 
@@ -192,7 +192,7 @@ class GamerBot(discord.AutoShardedClient):
                 .groupBy(USER_MATCHED_PHRASES.USER_ID).orderBy(("sum", Desc)).LIMIT(1).fetchone()
 
             if total_row is None:
-                message += "{} hasn't said any GAMER words.".format(user.mention)
+                message += "{} hasn't said any GAMER words.\n\n".format(user.mention)
             else:
                 message += "{}: **{}**".format(user.mention, total_row['sum'])
                 message += self._get_user_stats(db, user_id, Eq(USER_MATCHED_PHRASES.USER_ID, user_id))
@@ -259,12 +259,6 @@ class GamerBot(discord.AutoShardedClient):
 
     async def on_ready(self):
         db = Database(self.db_connection)
-
-        ingested_guilds = []
-        for channel in self.get_all_channels():
-            if channel.guild.id not in ingested_guilds:
-                await self.on_guild_join(channel.guild)
-                ingested_guilds.append(channel.guild.id)
 
         for channel in self.get_all_channels():
             await self._ingest_channel_history(db, channel)
