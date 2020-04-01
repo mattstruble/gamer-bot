@@ -8,6 +8,29 @@
 # Date: Feb. 17 2020
 from .ordering import _Ordering
 
+class ColumnFunction(object):
+
+    def __init__(self, *columns):
+        self.as_str = ""
+        self.columns = list(columns[0])
+        self.name = None
+
+    def AS(self, str):
+        self.as_str = "AS {}".format(str)
+        self.name = str
+
+    def _to_sql(self):
+        return "SUM({}) {}".format(",".join(self.columns), self.as_str)
+
+
+    def __eq__(self, other):
+        return other in self.columns
+
+    def __repr__(self):
+        return self._to_sql()
+
+    def __str__(self):
+        return self._to_sql()
 
 class Result(object):
     def __init__(self, table, values, return_columns):
@@ -16,7 +39,10 @@ class Result(object):
         self.dict = {}
 
         for i in range(len(return_columns)):
-            c = return_columns[i]
+            if isinstance(return_columns[i], ColumnFunction):
+                c = return_columns[i].name
+            else:
+                c = return_columns[i]
             v = values[i]
             self.dict[c] = v
             setattr(self, c, v)
@@ -30,6 +56,11 @@ class Result(object):
     def __len__(self):
         return len(self.dict)
 
+
+class Sum(ColumnFunction):
+    def __init__(self, *columns):
+        super().__init__(columns)
+        self.name = "sum"
 
 class Database(object):
     def __init__(self, connection):
@@ -88,6 +119,13 @@ class _FetchableDatabase(Database):
         self.sql += _Ordering(self, orderings).to_sql()
         return self
 
+    def groupBy(self, *columns):
+        for column in columns:
+            self._validate_column(column)
+
+        self.sql += " GROUP BY {}".format(",".join(columns))
+        return self
+
     def LIMIT(self, count):
         if not isinstance(count, int):
             raise ValueError("Count needs to be an integer.")
@@ -126,13 +164,15 @@ class _SelectDatabase(_FetchableDatabase):
     def FROM(self, table):
         self.table = table
 
-        self.sql = "SELECT {} FROM \"{}\"".format(','.join(self.return_columns), table.name)
+        self.sql = "SELECT {} FROM \"{}\"".format(','.join(str(x) for x in self.return_columns), table.name)
 
         if self.return_columns is '*':
             self.return_columns = self.table.columns
 
         for column in self.return_columns:
             self._validate_column(column)
+            if isinstance(column, ColumnFunction):
+                self.table.columns.append(column.name)
 
         return self
 

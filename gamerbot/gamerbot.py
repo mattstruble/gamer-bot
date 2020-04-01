@@ -1,7 +1,7 @@
 import discord
 
 from .database.conditionals import In, Eq
-from .database.database import Database
+from .database.database import Database, Sum
 from .database.functions import ingest_if_not_exist_returning, ingest_if_not_exist
 from .database.ordering import Asc, Desc
 from .database.tables import *
@@ -10,8 +10,20 @@ from .util.fingerprint import Fingerprint
 
 class GamerBot(discord.AutoShardedClient):
 
+    command_trigger = "gs!"
+    help_trigger = "!help"
+
+    commands = {
+        "" : "Display the overall stats for the server.",
+        "user" : "Display the stats for mentioned users.",
+        "channel": "Display the stats for the current channel.",
+        "help": "Display help"
+    }
+
     def __init__(self, connection, phrases, loop=None, **options):
         super().__init__(loop=loop, options=options)
+        self.phrase_dict = {}
+        self.percent_match = .8
 
         min_str_len = len(min(phrases, key=len))
 
@@ -19,13 +31,14 @@ class GamerBot(discord.AutoShardedClient):
 
         self.db_connection = connection
         self._ingest_phrases(phrases)
-        self.percent_match = .8
+
 
     def _ingest_phrases(self, phrases):
         db = Database(self.db_connection)
 
         for phrase in phrases:
             phrase_id = ingest_if_not_exist_returning(db, PHRASES, {PHRASES.PHRASE:phrase}, [PHRASES.ID])
+            self.phrase_dict[phrase_id] = phrase
 
             fingerprints = self.fingerprint.generate(phrase)
 
@@ -40,7 +53,7 @@ class GamerBot(discord.AutoShardedClient):
 
         self.db_connection.commit()
 
-    def _get_matched_phrase_ids(self, message, db):
+    def _get_matched_phrase_ids(self, content, db):
         phrases = db.selectFrom(PHRASES).fetchall()
 
         matched = {}
@@ -49,11 +62,14 @@ class GamerBot(discord.AutoShardedClient):
             phrase_id = phrase_dict[PHRASES.ID]
             phrase = phrase_dict[PHRASES.PHRASE]
 
-            count = message.count(phrase)
+            count = content.count(phrase)
             if count > 0:
                 matched[phrase_id] = count
             else:
-                fingerprints = [x[0] for x in self.fingerprint.generate(message)]
+                fingerprints = [x[0] for x in self.fingerprint.generate(content)]
+
+                if len(fingerprints) == 0:
+                    continue
 
                 message_fingerprints_ids = db.select(FINGERPRINTS.ID).FROM(FINGERPRINTS) \
                     .WHERE(In(FINGERPRINTS.FINGERPRINT, fingerprints)).fetchall()
@@ -97,6 +113,105 @@ class GamerBot(discord.AutoShardedClient):
 
             prepared_log.execute()
 
+    def _get_help(self):
+        message = ""
+
+        for key, value in self.commands.items():
+            message += "`{}{}`: {}\n".format(self.command_trigger, key, value)
+
+        return message
+
+    def _get_phrase(self, db, phrase_id):
+        return self.phrase_dict[phrase_id] #db.select(PHRASES.PHRASE).FROM(PHRASES).WHERE(Eq(PHRASES.ID, phrase_id)).LIMIT(1).fetchone
+
+    def _get_stats(self, db, conditional, location_str, no_match_string):
+        top_user_row = db.select(USER_MATCHED_PHRASES.USER_ID, Sum(USER_MATCHED_PHRASES.MATCHES)).FROM(
+            USER_MATCHED_PHRASES) \
+            .WHERE(conditional) \
+            .groupBy(USER_MATCHED_PHRASES.USER_ID).orderBy(("sum", Desc)).LIMIT(1).fetchone()
+
+        if top_user_row is None:
+            return no_match_string
+
+        top_user = self.get_user(top_user_row[USER_MATCHED_PHRASES.USER_ID])
+
+        message = "The top GAMER of this {} is {} with a total count of: **{}**".format(location_str, top_user.mention,
+                                                                                            top_user_row['sum'])
+
+        message += "\n\nTop Phrases:"
+        message += self._get_user_stats(db, top_user.id, conditional)
+
+        return message
+
+    def _get_guild_stats(self, db, guild_id):
+        return self._get_stats(db, Eq(USER_MATCHED_PHRASES.GUILD_ID, guild_id), "sever", "Couldn't find any GAMERS in this guild.")
+
+    def _get_channel_stats(self, db, channel_id):
+        return self._get_stats(db, Eq(USER_MATCHED_PHRASES.CHANNEL_ID, channel_id), "channel", "Couldn't find any GAMERS in this channel.")
+
+    def _get_user_stats(self, db, user_id, conditional):
+        message = ""
+
+        breakdown_ret = db.select(USER_MATCHED_PHRASES.USER_ID, USER_MATCHED_PHRASES.PHRASE_ID,
+                                  Sum(USER_MATCHED_PHRASES.MATCHES)) \
+            .FROM(USER_MATCHED_PHRASES).WHERE(conditional) \
+            .AND(Eq(USER_MATCHED_PHRASES.USER_ID, user_id)) \
+            .groupBy(USER_MATCHED_PHRASES.USER_ID, USER_MATCHED_PHRASES.PHRASE_ID) \
+            .orderBy(("sum", Desc)).LIMIT(3).fetchmany(3)
+
+        for i, stat in enumerate(breakdown_ret):
+            phrase = self._get_phrase(db, stat[USER_MATCHED_PHRASES.PHRASE_ID])
+            count = stat['sum']
+            message += "\n{}. `{}`: {}".format(i + 1, phrase, count)
+
+        return message
+
+    def _get_users_stats(self, db, user_ids):
+        message = ""
+
+        if len(user_ids) == 0:
+            return self._get_help()
+
+
+
+        for user_id in user_ids:
+            user = self.get_user(user_id)
+
+            total_row = db.select(USER_MATCHED_PHRASES.USER_ID, Sum(USER_MATCHED_PHRASES.MATCHES)).FROM(
+                USER_MATCHED_PHRASES) \
+                .WHERE(Eq(USER_MATCHED_PHRASES.USER_ID, user_id)) \
+                .groupBy(USER_MATCHED_PHRASES.USER_ID).orderBy(("sum", Desc)).LIMIT(1).fetchone()
+
+            if total_row is None:
+                message += "{} hasn't said any GAMER words.".format(user.mention)
+            else:
+                message += "{}: **{}**".format(user.mention, total_row['sum'])
+                message += self._get_user_stats(db, user_id, Eq(USER_MATCHED_PHRASES.USER_ID, user_id))
+
+                message += "\n\n"
+
+
+
+
+
+        return message
+
+
+    async def _handle_commands(self, db, message):
+        command = message.content.split('!')[1].split(' ')[0]
+
+        if command == "":
+            print_message = self._get_guild_stats(db, message.guild.id)
+        elif command == "user":
+            print_message = self._get_users_stats(db, message.raw_mentions)
+        elif command == "channel":
+            print_message = self._get_channel_stats(db, message.channel.id)
+        else:
+            print_message = self._get_help()
+
+        await message.channel.send(print_message)
+
+
     @staticmethod
     def _ingest_user(db, user):
         user_name_id = ingest_if_not_exist_returning(db, USER_NAMES, {USER_NAMES.USER_NAME:user.name}, [USER_NAMES.ID])
@@ -121,6 +236,10 @@ class GamerBot(discord.AutoShardedClient):
         else:
             return None
 
+    @staticmethod
+    def _is_command_message(message):
+        return message.content.startswith(GamerBot.command_trigger) or message.content.startswith(GamerBot.help_trigger)
+
     async def _ingest_channel_history(self, db, channel):
         if not isinstance(channel, discord.TextChannel):
             return
@@ -130,7 +249,8 @@ class GamerBot(discord.AutoShardedClient):
 
         async with channel.typing(): # scanning history could be a long process, show typing as the bot "thinking"
             async for message in channel.history(after=last_message_time, oldest_first=True): # iterate over all channel history from last message
-                self._ingest_message(db, message)
+                if not self._is_command_message(message):
+                    self._ingest_message(db, message)
 
     async def on_ready(self):
         db = Database(self.db_connection)
@@ -141,9 +261,15 @@ class GamerBot(discord.AutoShardedClient):
         db.commit()
 
     async def on_message(self, message):
+        if message.author == self.user:
+            return
+
         db = Database(self.db_connection)
 
-        self._ingest_message(db, message)
+        if self._is_command_message(message):
+            await self._handle_commands(db, message)
+        else:
+            self._ingest_message(db, message)
 
         db.commit()
 
