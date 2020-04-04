@@ -5,7 +5,7 @@ from .database.database import Database, Sum
 from .database.functions import ingest_if_not_exist_returning, ingest_if_not_exist
 from .database.ordering import Desc
 from .database.tables import *
-from .util.fingerprint import Fingerprint
+from .util.fingerprint import Fingerprint, template_match_fingerprints
 
 
 class GamerBot(discord.AutoShardedClient):
@@ -64,32 +64,25 @@ class GamerBot(discord.AutoShardedClient):
             phrase_id = phrase_dict[PHRASES.ID]
             phrase = phrase_dict[PHRASES.PHRASE]
 
-            count = content.count(phrase)
-            if count > 0:
-                matched[phrase_id] = count
-            # else:
-            #     try :
-            #         if len(self.fingerprint.generate(content)) == 0:
-            #             return
-            #     except:
-            #         return
-            #
-            #     fingerprints = [x[0] for x in self.fingerprint.generate(content)]
-            #
-            #     if len(fingerprints) == 0:
-            #         continue
-            #
-            #     message_fingerprints_ids = db.select(FINGERPRINTS.ID).FROM(FINGERPRINTS) \
-            #         .WHERE(In(FINGERPRINTS.FINGERPRINT, fingerprints)).fetchall()
-            #
-            #     phrase_fingerprints_ids = db.select(PHRASE_FINGERPRINT_BRIDGE.FINGERPRINT_ID).FROM(PHRASE_FINGERPRINT_BRIDGE) \
-            #         .WHERE(Eq(PHRASE_FINGERPRINT_BRIDGE.PHRASE_ID, phrase_id)) \
-            #         .orderBy((PHRASE_FINGERPRINT_BRIDGE.LOCATION, Asc)).fetchall()
-            #
-            #     matching = set(message_fingerprints_ids) & set(phrase_fingerprints_ids)
-            #
-            #     if len(matching) > len(phrase_fingerprints_ids) * self.percent_match:
-            #         matched[phrase_id] = 1 # todo: determine way to count fingerprint matches
+            # single word phrases look for a direct match
+            if len(phrase.split(" ")) == 1:
+                count = content.count(phrase)
+                if count > 0:
+                    matched[phrase_id] = count
+            else: # else perform template matching
+                try :
+                    content_fingerprints = self.fingerprint.generate(content)
+                    template_fingerprints = self.fingerprint.generate(phrase)
+
+                    if len(content_fingerprints) == 0 or len(template_fingerprints) == 0:
+                        continue
+
+                    matched = template_match_fingerprints(template_fingerprints, content_fingerprints)
+
+                    if len(matched) > 0:
+                        matched[phrase_id] = len(matched)
+                except:
+                    pass
 
         return matched
 
@@ -97,7 +90,7 @@ class GamerBot(discord.AutoShardedClient):
         if message.author == self.user:
             return
 
-        matched_ids = self._get_matched_phrase_ids(message.content, db)
+        matched_count = self._get_matched_phrase_ids(message.content, db)
 
         message_content_id = ingest_if_not_exist_returning(db, MESSAGE_CONTENT, {MESSAGE_CONTENT.CONTENT:message.content}, [MESSAGE_CONTENT.ID])
 
@@ -110,13 +103,14 @@ class GamerBot(discord.AutoShardedClient):
 
         message_id = ingest_if_not_exist_returning(db, MESSAGES, message_record, [MESSAGES.UID])
 
-        if matched_ids is not None and len(matched_ids) > 0:
+        if matched_count is not None and len(matched_count) > 0:
             prepared_log = db.insertInto(USER_MATCHED_PHRASES, USER_MATCHED_PHRASES.PHRASE_ID, USER_MATCHED_PHRASES.USER_ID,
                                          USER_MATCHED_PHRASES.GUILD_ID, USER_MATCHED_PHRASES.CHANNEL_ID, USER_MATCHED_PHRASES.MESSAGE_ID,
                                          USER_MATCHED_PHRASES.MATCHES)
 
-            for phrase_id in matched_ids.keys():
-                prepared_log = prepared_log.prepare(phrase_id, message.author.id, message.guild.id, message.channel.id, message_id, matched_ids[phrase_id])
+            for phrase_id in matched_count.keys():
+                if matched_count[phrase_id] > 0: # only ingest row if it has matches
+                    prepared_log = prepared_log.prepare(phrase_id, message.author.id, message.guild.id, message.channel.id, message_id, matched_count[phrase_id])
 
             prepared_log.execute()
 
@@ -124,7 +118,7 @@ class GamerBot(discord.AutoShardedClient):
         message = ""
 
         for key, value in self.commands.items():
-            message += "`{}{}`: {}\n".format(self.command_trigger, key, value)
+            message += "`{}{}`: {}\n".format(self.command_trigger, key, value['msg'])
 
         return message
 
