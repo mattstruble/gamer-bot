@@ -14,10 +14,11 @@ class GamerBot(discord.AutoShardedClient):
     help_trigger = "!help"
 
     commands = {
-        "" : "Display the overall stats for the server.",
-        "user" : "Display the stats for mentioned users.",
-        "channel": "Display the stats for the current channel.",
-        "help": "Display help"
+        "": {'msg': "Display the overall stats for the server.", 'super': False},
+        "user": {'msg': "Display the stats for mentioned users.", 'super': False},
+        "channel": {'msg': "Display the stats for the current channel.", 'super': False},
+        "recount": {'msg': "Recounts all the messages in the guild. _Superusers only._", 'super': True },
+        "help": {'msg': "Display help", 'super': False}
     }
 
     def __init__(self, connection, phrases, loop=None, **options):
@@ -254,8 +255,11 @@ class GamerBot(discord.AutoShardedClient):
     async def on_ready(self):
         db = Database(self.db_connection)
 
-        for channel in self.get_all_channels():
-            await self._ingest_channel_history(db, channel)
+        for guild in self.guilds:
+            await self.on_guild_join(guild)
+
+        # for channel in self.get_all_channels():
+        #     await self._ingest_channel_history(db, channel)
 
         db.commit()
 
@@ -272,6 +276,13 @@ class GamerBot(discord.AutoShardedClient):
 
         db.commit()
 
+    async def on_guild_channel_update(self, before, after):
+        if before.name != after.name:
+            db = Database(self.db_connection)
+
+            new_name_id = ingest_if_not_exist_returning(db, CHANNEL_NAMES, {CHANNEL_NAMES.CHANNEL_NAME:after.name}, [CHANNEL_NAMES.ID])
+            db.update(CHANNELS).set(CHANNELS.CHANNEL_NAME_ID, new_name_id).WHERE(Eq(CHANNELS.UID, before.id)).execute()
+
     async def on_guild_channel_create(self, channel):
         db = Database(self.db_connection)
         self._ingest_channel(db, channel)
@@ -284,6 +295,13 @@ class GamerBot(discord.AutoShardedClient):
 
         db.commit()
 
+    async def on_guild_update(self, before, after):
+        if before.name != after.name:
+            db = Database(self.db_connection)
+
+            new_name_id = ingest_if_not_exist_returning(db, GUILD_NAMES, {GUILD_NAMES.GUILD_NAME:after.name}, [GUILD_NAMES.ID])
+            db.update(GUILDS).set(GUILDS.GUILD_NAME_ID, new_name_id).WHERE(Eq(GUILDS.UID, before.id)).execute()
+
     async def on_guild_join(self, guild):
         db = Database(self.db_connection)
         self._ingest_guild(db, guild)
@@ -293,6 +311,8 @@ class GamerBot(discord.AutoShardedClient):
 
         for channel in guild.text_channels:
             self._ingest_channel(db, channel)
+
+        db.commit()
 
         # split history ingestion from normal channel ingestion for efficiency. Want channels in first to allow processing
         # of messages as they come in
