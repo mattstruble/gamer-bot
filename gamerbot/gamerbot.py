@@ -78,10 +78,10 @@ class GamerBot(discord.AutoShardedClient):
                     if len(content_fingerprints) == 0 or len(template_fingerprints) == 0:
                         continue
 
-                    matched = template_match_fingerprints(template_fingerprints, content_fingerprints)
+                    template_matches = template_match_fingerprints(template_fingerprints, content_fingerprints)
 
-                    if len(matched) > 0:
-                        matched[phrase_id] = len(matched)
+                    if len(template_matches) > 0:
+                        matched[phrase_id] = len(template_matches)
                 except:
                     pass
 
@@ -175,8 +175,6 @@ class GamerBot(discord.AutoShardedClient):
 
         if len(user_ids) == 0:
             return self._get_help()
-
-
 
         for user_id in user_ids:
             user = self.get_user(user_id)
