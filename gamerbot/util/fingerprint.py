@@ -135,7 +135,6 @@ def template_match_hashes(template_hashes, source_hashes, match_percent=0.6):
     :param match_percent: Percent of acceptance for template to match.
     :return: Array of ranges that match the provided template in the source.
     """
-    print(template_hashes, source_hashes)
     # Store staring indexes for each template hash
     template_locs = {}
     for t_hash in template_hashes:
