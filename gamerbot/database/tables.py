@@ -62,10 +62,11 @@ class GUILD_NAMES(_TABLE):
 
 class MESSAGES(_TABLE):
     name = "messages"
-    columns = ["uid", "channel_id", "message_content_id", "created_at"]
+    columns = ["uid", "user_id", "channel_id", "message_content_id", "created_at"]
     non_pk_columns = columns[1:]
 
     UID = "uid"
+    USER_ID = "user_id"
     CHANNEL_ID = "channel_id"
     MESSAGE_CONTENT_ID = "message_content_id"
     CREATED_AT = "created_at"

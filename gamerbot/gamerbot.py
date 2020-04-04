@@ -97,6 +97,7 @@ class GamerBot(discord.AutoShardedClient):
 
         message_record = {
             MESSAGES.UID: message.id,
+            MESSAGES.USER_ID: message.author.id,
             MESSAGES.CHANNEL_ID: message.channel.id,
             MESSAGES.MESSAGE_CONTENT_ID: message_content_id,
             MESSAGES.CREATED_AT: message.created_at

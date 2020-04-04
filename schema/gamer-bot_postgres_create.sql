@@ -88,6 +88,7 @@ CREATE TABLE "guild_names" (
 
 CREATE TABLE "messages" (
 	"uid" bigint NOT NULL UNIQUE,
+	"user_id" bigint NOT NULL,
 	"channel_id" bigint NOT NULL,
 	"message_content_id" integer NOT NULL,
 	"created_at" TIMESTAMP NOT NULL
@@ -136,9 +137,10 @@ ALTER TABLE "guilds" ADD CONSTRAINT "guilds_fk0" FOREIGN KEY ("guild_name_id") R
 
 
 
+ALTER TABLE "messages" ADD CONSTRAINT "messages_fk0" FOREIGN KEY ("user_id") REFERENCES "users"("uid");
+ALTER TABLE "messages" ADD CONSTRAINT "messages_fk1" FOREIGN KEY ("channel_id") REFERENCES "channels"("uid");
+ALTER TABLE "messages" ADD CONSTRAINT "messages_fk2" FOREIGN KEY ("message_content_id") REFERENCES "message_content"("id");
 
-ALTER TABLE "messages" ADD CONSTRAINT "messages_fk0" FOREIGN KEY ("channel_id") REFERENCES "channels"("uid");
-ALTER TABLE "messages" ADD CONSTRAINT "messages_fk1" FOREIGN KEY ("message_content_id") REFERENCES "message_content"("id");
 
 
 ALTER TABLE "user_matched_phrases" ADD CONSTRAINT "user_matched_phrases_fk0" FOREIGN KEY ("phrase_id") REFERENCES "phrases"("id");
@@ -167,6 +169,7 @@ CREATE INDEX "idx_channels_guild_id" ON "channels"("guild_id");
 
 CREATE INDEX "idx_message_content" ON "message_content"("content");
 CREATE INDEX "idx_messages_uid" ON "messages"("uid");
+CREATE INDEX "idx_messages_user_id" ON "messages"("user_id");
 CREATE INDEX "idx_messages_channel_id" ON "messages"("channel_id");
 CREATE INDEX "idx_messages_created_at" ON "messages"("created_at");
 
