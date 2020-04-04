@@ -84,6 +84,9 @@ class Database(object):
     def insertInto(self, table, *columns):
         return _InsertDatabase(self.connection, table, columns)
 
+    def update(self, table):
+        return _UpdateDatabase(self.connection, table)
+
     def execute(self):
         if len(self.values) > 0:
             self.cursor.execute(self.sql, self.values)
@@ -94,8 +97,39 @@ class Database(object):
         if column not in self.table.columns:
             raise ValueError("Unexpected column ['{}'] for table ['{}']".format(column, self.table.name))
 
+class _ConditionalDatabase(Database):
+    def __init__(self, connection):
+        super().__init__(connection)
 
-class _FetchableDatabase(Database):
+    def _validate_conditional(self, conditional):
+        self._validate_column(conditional.column)
+
+    def _construct_logical_sql(self, operator, conditional):
+        self._validate_conditional(conditional)
+
+        if conditional.has_value:
+            value_name = conditional.name + str(len(self.values))
+            self.values[value_name] = conditional.value
+
+            # https://www.psycopg.org/docs/usage.html#query-parameters
+            self.sql += " {} \"{}\".\"{}\" {} %({})s".format(operator, self.table.name, conditional.column, conditional.conditional, value_name)
+        else:
+            self.sql += " {} \"{}\".\"{}\" {}".format(operator, self.table.name, conditional.column, conditional.conditional)
+
+    def WHERE(self, conditional):
+        self._construct_logical_sql('WHERE', conditional)
+        return self
+
+    def AND(self, conditional):
+        self._construct_logical_sql('AND', conditional)
+        return self
+
+    def OR(self, conditional):
+        self._construct_logical_sql('OR', conditional)
+        return self
+
+
+class _FetchableDatabase(_ConditionalDatabase):
     def __init__(self, connection):
         super().__init__(connection)
         self.return_columns = []
@@ -176,33 +210,6 @@ class _SelectDatabase(_FetchableDatabase):
 
         return self
 
-    def _validate_conditional(self, conditional):
-        self._validate_column(conditional.column)
-
-    def _construct_logical_sql(self, operator, conditional):
-        self._validate_conditional(conditional)
-
-        if conditional.has_value:
-            value_name = conditional.name + str(len(self.values))
-            self.values[value_name] = conditional.value
-
-            # https://www.psycopg.org/docs/usage.html#query-parameters
-            self.sql += " {} \"{}\".\"{}\" {} %({})s".format(operator, self.table.name, conditional.column, conditional.conditional, value_name)
-        else:
-            self.sql += " {} \"{}\".\"{}\" {}".format(operator, self.table.name, conditional.column, conditional.conditional)
-
-    def WHERE(self, conditional):
-        self._construct_logical_sql('WHERE', conditional)
-        return self
-
-    def AND(self, conditional):
-        self._construct_logical_sql('AND', conditional)
-        return self
-
-    def OR(self, conditional):
-        self._construct_logical_sql('OR', conditional)
-        return self
-
 class _ReturningDatabase(_FetchableDatabase):
     def __init__(self, connection, table, sql, returning):
         super().__init__(connection)
@@ -263,3 +270,28 @@ class _InsertDatabase(Database):
         self._build_mogrifies()
 
         return _ReturningDatabase(self.connection, self.table, self.sql, returning)
+
+
+class _UpdateDatabase(_ConditionalDatabase):
+    def __init__(self, connection, table):
+        super().__init__(connection)
+
+        self.table = table
+
+        self.set_called = False
+        self.sql = "UPDATE \"{}\"".format(table.name)
+
+    def set(self, column, value):
+        self._validate_column(column)
+
+        value_name = column + str(len(self.values))
+        self.values[value_name] = value
+
+        if not self.set_called:
+            set_sql = " SET \"{}\".\"{}\" = %({})s".format(self.table.name, column, value_name)
+        else:
+            set_sql = ", \"{}\".\"{}\" = %({})s".format(self.table.name, column, value_name)
+
+        self.sql += set_sql
+
+        return self
