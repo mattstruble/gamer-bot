@@ -78,7 +78,7 @@ class GamerBot(discord.AutoShardedClient):
                     if len(content_fingerprints) == 0 or len(template_fingerprints) == 0:
                         continue
 
-                    template_matches = template_match_fingerprints(template_fingerprints, content_fingerprints)
+                    template_matches = template_match_fingerprints(template_fingerprints, content_fingerprints, match_percent=0.65)
 
                     if len(template_matches) > 0:
                         matched[phrase_id] = len(template_matches)

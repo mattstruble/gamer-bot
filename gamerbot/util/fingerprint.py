@@ -143,7 +143,7 @@ def template_match_hashes(template_hashes, source_hashes, match_percent=0.6):
     checked_idxs = []
     matched_ranges = []
     template_len = len(template_hashes)
-    for i in range(int(template_len/2)): # only first half of template can "start" the template
+    for i in range(int(template_len/4)): # only first fourth of template can "start" the template
         start_idxs = template_locs[template_hashes[i]]
         for start_idx in start_idxs: # Try to find a template match for each starting index
             if start_idx in checked_idxs:
