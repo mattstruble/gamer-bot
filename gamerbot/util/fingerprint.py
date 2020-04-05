@@ -12,6 +12,10 @@ import numpy as np
 
 # https://theory.stanford.edu/~aiken/publications/papers/sigmod03.pdf
 class Fingerprint(object):
+    alphanum_space_pattern = re.compile('[^a-zA-z0-9_ ]+', flags=re.MULTILINE)  # only alphanumeric, underscore, and space
+    alphanum_pattern = re.compile('[^a-zA-z0-9_]+', flags=re.MULTILINE)  # only alphanumeric and underscore
+    url_pattern = re.compile('(http|ftp|https):\/\/([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])?')
+
     # base is 158 to allow non-english ascii letters to be hashed properly
     def __init__(self, kgram_len=50, window_len=100, modulo=sys.maxsize, base=158, allow_space=False):
         self.kgram_len = kgram_len
@@ -19,10 +23,6 @@ class Fingerprint(object):
         self.modulo = modulo
         self.base = base
         self.allow_space = allow_space
-
-        self.alphanum_space_pattern = re.compile('[^a-zA-z0-9_ ]+', flags=re.MULTILINE) # only alphanumeric, underscore, and space
-        self.alphanum_pattern = re.compile('[^a-zA-z0-9_]+', flags=re.MULTILINE)  # only alphanumeric and underscore
-        self.url_pattern = re.compile('(http|ftp|https):\/\/([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])?')
 
         self.patterns = [self.url_pattern]
 
@@ -194,3 +194,21 @@ def template_match_fingerprints(template_fingerprints, source_fingerprints, matc
     source_hashes = [y[0] for y in sorted(source_fingerprints, key= lambda x: x[1])]
 
     return template_match_hashes(template_hashes, source_hashes, match_percent)
+
+if __name__=="__main__":
+    template = "gamers. are in chat"
+    source = "I said steamers what about it"
+    words = template.split()
+    print(words)
+    average_len = int(sum(len(word) for word in words)/len(words))
+    print(average_len, len(template))
+    min_template_len = len(template)
+    fingerprinter = Fingerprint(kgram_len=average_len, window_len=average_len)
+
+    template_fingerprints = fingerprinter.generate(template)
+    source_fingerprints = fingerprinter.generate(source)
+
+    print(template_fingerprints)
+    print(source_fingerprints)
+
+    print(template_match_fingerprints(template_fingerprints, source_fingerprints))
