@@ -17,7 +17,10 @@ class GamerBot(discord.AutoShardedClient):
         "": {'msg': "Display the overall stats for the server.", 'super': False},
         "user": {'msg': "Display the stats for mentioned users.", 'super': False},
         "channel": {'msg': "Display the stats for the current channel.", 'super': False},
-        "recount": {'msg': "Recounts all the messages in the guild. _Superusers only._", 'super': True },
+        "list": {'msg': "List the phrases the bot is tracking.", 'super': False},
+        "add": {'msg': "Adds anything trailing the command as a single phrase to be counted. _Superusers only._", 'super': True},
+        "remove": {'msg': "Enter an identification number of a phrase to remove, can be found using gs!list. _Superusers only._", 'super': True},
+        "recount": {'msg': "Recounts all the messages in the guild, automatically triggered when add or remove are called. _Superusers only._", 'super': True},
         "help": {'msg': "Display help", 'super': False}
     }
 
