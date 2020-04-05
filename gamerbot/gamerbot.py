@@ -29,9 +29,7 @@ class GamerBot(discord.AutoShardedClient):
         self.phrase_dict = {}
         self.percent_match = .9
 
-        min_str_len = len(min(phrases, key=len))
-
-        self.fingerprint = Fingerprint(kgram_len=int(min_str_len/2), window_len=int(min_str_len/2))
+        self.fingerprint = Fingerprint()
 
         self.db_connection = connection
         self._ingest_phrases(phrases)
@@ -64,8 +62,10 @@ class GamerBot(discord.AutoShardedClient):
                     matched[phrase_id] = count
             else: # else perform template matching
                 try :
-                    content_fingerprints = self.fingerprint.generate(content)
-                    template_fingerprints = self.fingerprint.generate(phrase)
+                    fingerprinter = self.fingerprint.get_fingerprinter_from_string(phrase)
+
+                    content_fingerprints = fingerprinter.generate(content)
+                    template_fingerprints = fingerprinter.generate(phrase)
 
                     if len(content_fingerprints) == 0 or len(template_fingerprints) == 0:
                         continue

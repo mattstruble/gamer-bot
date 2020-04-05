@@ -18,14 +18,18 @@ class Fingerprint(object):
         self.window_len = window_len
         self.modulo = modulo
         self.base = base
+        self.allow_space = allow_space
+
+        self.alphanum_space_pattern = re.compile('[^a-zA-z0-9_ ]+', flags=re.MULTILINE) # only alphanumeric, underscore, and space
+        self.alphanum_pattern = re.compile('[^a-zA-z0-9_]+', flags=re.MULTILINE)  # only alphanumeric and underscore
+        self.url_pattern = re.compile('(http|ftp|https):\/\/([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])?')
+
+        self.patterns = [self.url_pattern]
 
         if allow_space:
-            self.alpha_pattern = re.compile('[^a-zA-z0-9_ ]+', flags=re.MULTILINE) # only alphanumeric, underscore, and space
+            self.patterns.append(self.alphanum_space_pattern)
         else:
-            self.alpha_pattern = re.compile('[^a-zA-z0-9_]+', flags=re.MULTILINE)  # only alphanumeric and underscore
-
-        self.url_pattern = re.compile('(http|ftp|https):\/\/([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])?')
-        self.patterns = [self.url_pattern, self.alpha_pattern]
+            self.patterns.append(self.alphanum_pattern)
 
         # add 1 so that 'a' has some effect on the hash instead of always equating to 0
         self.ch_to_int = lambda x: ord(x) - ord('a') + 1
@@ -108,6 +112,17 @@ class Fingerprint(object):
         fingerprints = self._gen_fingerprints(hashes)
 
         return fingerprints
+
+    def get_fingerprinter_from_string(self, template_str):
+        template = self.alphanum_space_pattern.sub('', template_str)
+
+        words = template.split()
+        average_len = int(sum(len(word) for word in words) / len(words))
+        kgram_len = int(average_len/2)
+        window_len = int(average_len/2)
+
+        return Fingerprint(kgram_len=kgram_len, window_len=window_len,
+                           modulo=self.modulo, base=self.base, allow_space=self.allow_space)
 
 
 def template_match_hashes(template_hashes, source_hashes, match_percent=0.6):
