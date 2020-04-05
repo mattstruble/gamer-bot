@@ -194,21 +194,3 @@ def template_match_fingerprints(template_fingerprints, source_fingerprints, matc
     source_hashes = [y[0] for y in sorted(source_fingerprints, key= lambda x: x[1])]
 
     return template_match_hashes(template_hashes, source_hashes, match_percent)
-
-if __name__=="__main__":
-    template = "gamers. are in chat"
-    source = "I said steamers what about it"
-    words = template.split()
-    print(words)
-    average_len = int(sum(len(word) for word in words)/len(words))
-    print(average_len, len(template))
-    min_template_len = len(template)
-    fingerprinter = Fingerprint(kgram_len=average_len, window_len=average_len)
-
-    template_fingerprints = fingerprinter.generate(template)
-    source_fingerprints = fingerprinter.generate(source)
-
-    print(template_fingerprints)
-    print(source_fingerprints)
-
-    print(template_match_fingerprints(template_fingerprints, source_fingerprints))
