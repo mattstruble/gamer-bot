@@ -168,7 +168,7 @@ def template_match_hashes(template_hashes, source_hashes, match_percent=0.6):
                 checked_idxs.append(j)
 
             # only record if both the percent matched and number of counted is greater than match_percent.
-            if matched / counted >= match_percent and counted >= template_len * match_percent:
+            if matched / counted >= match_percent and counted >= template_len:
                 matched_ranges.append(range(start_idx, j+1))
 
     return matched_ranges
