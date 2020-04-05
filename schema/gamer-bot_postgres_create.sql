@@ -8,26 +8,6 @@ CREATE TABLE "phrases" (
 
 
 
-CREATE TABLE "phrase_fingerprint_bridge" (
-	"phrase_id" integer NOT NULL,
-	"fingerprint_id" integer NOT NULL,
-	"location" integer NOT NULL
-) WITH (
-  OIDS=FALSE
-);
-
-
-
-CREATE TABLE "fingerprints" (
-	"id" serial NOT NULL,
-	"fingerprint" bigint NOT NULL UNIQUE,
-	CONSTRAINT "fingerprints_pk" PRIMARY KEY ("id")
-) WITH (
-  OIDS=FALSE
-);
-
-
-
 CREATE TABLE "users" (
 	"uid" bigint NOT NULL UNIQUE,
 	"user_name_id" integer NOT NULL
@@ -124,10 +104,6 @@ CREATE TABLE "user_matched_phrases" (
 
 
 
-ALTER TABLE "phrase_fingerprint_bridge" ADD CONSTRAINT "phrase_fingerprint_bridge_fk0" FOREIGN KEY ("phrase_id") REFERENCES "phrases"("id");
-ALTER TABLE "phrase_fingerprint_bridge" ADD CONSTRAINT "phrase_fingerprint_bridge_fk1" FOREIGN KEY ("fingerprint_id") REFERENCES "fingerprints"("id");
-
-
 ALTER TABLE "users" ADD CONSTRAINT "users_fk0" FOREIGN KEY ("user_name_id") REFERENCES "user_names"("id");
 
 ALTER TABLE "channels" ADD CONSTRAINT "channels_fk0" FOREIGN KEY ("guild_id") REFERENCES "guilds"("uid");
@@ -137,10 +113,10 @@ ALTER TABLE "guilds" ADD CONSTRAINT "guilds_fk0" FOREIGN KEY ("guild_name_id") R
 
 
 
+
 ALTER TABLE "messages" ADD CONSTRAINT "messages_fk0" FOREIGN KEY ("user_id") REFERENCES "users"("uid");
 ALTER TABLE "messages" ADD CONSTRAINT "messages_fk1" FOREIGN KEY ("channel_id") REFERENCES "channels"("uid");
 ALTER TABLE "messages" ADD CONSTRAINT "messages_fk2" FOREIGN KEY ("message_content_id") REFERENCES "message_content"("id");
-
 
 
 ALTER TABLE "user_matched_phrases" ADD CONSTRAINT "user_matched_phrases_fk0" FOREIGN KEY ("phrase_id") REFERENCES "phrases"("id");
@@ -153,9 +129,6 @@ ALTER TABLE "user_matched_phrases" ADD CONSTRAINT "user_matched_phrases_fk4" FOR
 
 
 CREATE INDEX "idx_phrase" ON "phrases"("phrase");
-CREATE INDEX "idx_fingerprint" ON "fingerprints"("fingerprint");
-CREATE INDEX "idx_phrase_fingerprint_bridge_fingerprint_id" ON "phrase_fingerprint_bridge"("fingerprint_id");
-CREATE INDEX "idx_phrase_fingerprint_bridge_phrase_id" ON "phrase_fingerprint_bridge"("phrase_id");
 
 CREATE INDEX "idx_user_names" ON "user_names"("user_name");
 CREATE INDEX "idx_user_uid" ON "users"("uid");

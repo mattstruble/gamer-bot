@@ -33,15 +33,6 @@ class CHANNEL_NAMES(_TABLE):
     CHANNEL_NAME = "channel_name"
 
 
-class FINGERPRINTS(_TABLE):
-    name = "fingerprints"
-    columns = ["id", "fingerprint"]
-    non_pk_columns = columns[1:]
-
-    ID = "id"
-    FINGERPRINT = "fingerprint"
-
-
 class GUILDS(_TABLE):
     name = "guilds"
     columns = ["uid", "guild_name_id"]
@@ -88,16 +79,6 @@ class PHRASES(_TABLE):
 
     ID = "id"
     PHRASE = "phrase"
-
-
-class PHRASE_FINGERPRINT_BRIDGE(_TABLE):
-    name = "phrase_fingerprint_bridge"
-    columns = ["phrase_id", "fingerprint_id", "location"]
-    non_pk_columns = columns
-
-    PHRASE_ID = "phrase_id"
-    FINGERPRINT_ID = "fingerprint_id"
-    LOCATION = "location"
 
 
 class USERS(_TABLE):

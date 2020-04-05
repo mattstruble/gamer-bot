@@ -2,7 +2,7 @@ import discord
 
 from .database.conditionals import Eq
 from .database.database import Database, Sum
-from .database.functions import ingest_if_not_exist_returning, ingest_if_not_exist
+from .database.functions import ingest_if_not_exist_returning
 from .database.ordering import Desc
 from .database.tables import *
 from .util.fingerprint import Fingerprint, template_match_fingerprints
@@ -43,17 +43,6 @@ class GamerBot(discord.AutoShardedClient):
         for phrase in phrases:
             phrase_id = ingest_if_not_exist_returning(db, PHRASES, {PHRASES.PHRASE:phrase.lower()}, [PHRASES.ID])
             self.phrase_dict[phrase_id] = phrase
-
-            fingerprints = self.fingerprint.generate(phrase)
-
-            for fingerprint, location in fingerprints:
-                fingerprint_id = ingest_if_not_exist_returning(db, FINGERPRINTS, {FINGERPRINTS.FINGERPRINT: fingerprint}, [FINGERPRINTS.ID])
-
-                phrase_bridge_record = {PHRASE_FINGERPRINT_BRIDGE.PHRASE_ID: phrase_id,
-                                        PHRASE_FINGERPRINT_BRIDGE.FINGERPRINT_ID: fingerprint_id,
-                                        PHRASE_FINGERPRINT_BRIDGE.LOCATION: location}
-
-                ingest_if_not_exist(db, PHRASE_FINGERPRINT_BRIDGE, phrase_bridge_record)
 
         self.db_connection.commit()
 
