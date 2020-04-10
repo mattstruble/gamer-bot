@@ -8,9 +8,9 @@ A Discord bot that logs user phrase usage.
 
 ## Setup
 
-1. Install the required python modules `pip install -r requirements.txt`
+1. Follow the instructions in [create-discord-bot](https://github.com/peterthehan/create-discord-bot).
 
-2. Follow the instructions in [create-discord-bot](https://github.com/peterthehan/create-discord-bot).
+2. Install the required python modules `pip install -r requirements.txt`
 
 3. Update `gamerbot.cfg.example` with your credentials and save it as `gamerbot.cfg`
 
