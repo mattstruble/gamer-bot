@@ -2,7 +2,7 @@ import discord
 
 from .database.conditionals import Eq
 from .database.database import Database, Sum
-from .database.functions import ingest_if_not_exist_returning
+from .database.functions import ingest_if_not_exist_returning, fetchone_from_table
 from .database.ordering import Desc
 from .database.tables import *
 from .util.fingerprint import Fingerprint, template_match_fingerprints
@@ -202,18 +202,31 @@ class GamerBot(discord.AutoShardedClient):
 
         await message.channel.send(print_message)
 
+    @staticmethod
+    def _ingest_name_lookup_table(db, table, uid_column, uid_value, name_id_column, name_id_value):
+        uid_row = fetchone_from_table(db, table, {uid_column:uid_value}, table.columns)
+        ret_id = uid_value
+
+        if uid_row is not None and uid_row[name_id_column] != name_id_value:
+            db.update(table).set(name_id_column, name_id_value).WHERE(Eq(uid_column, uid_value)).execute()
+        elif uid_row is None:
+            ret_id = ingest_if_not_exist_returning(db, table, {uid_column:uid_value, name_id_column:name_id_value}, [uid_column])
+
+        return ret_id
 
     @staticmethod
     def _ingest_user(db, user):
         user_name_id = ingest_if_not_exist_returning(db, USER_NAMES, {USER_NAMES.USER_NAME:user.name}, [USER_NAMES.ID])
-        user_id = ingest_if_not_exist_returning(db, USERS, {USERS.UID:user.id, USERS.USER_NAME_ID: user_name_id}, [USERS.UID])
+
+        user_id = GamerBot._ingest_name_lookup_table(db, USERS, USERS.UID, user.id, USERS.USER_NAME_ID, user_name_id)
 
         return user_id
 
     @staticmethod
     def _ingest_guild(db, guild):
         guild_name_id = ingest_if_not_exist_returning(db, GUILD_NAMES, {GUILD_NAMES.GUILD_NAME:guild.name}, [GUILD_NAMES.ID])
-        guild_id = ingest_if_not_exist_returning(db, GUILDS, {GUILDS.UID:guild.id, GUILDS.GUILD_NAME_ID:guild_name_id}, [GUILDS.UID])
+
+        guild_id = GamerBot._ingest_name_lookup_table(db, GUILDS, GUILDS.UID, guild.id, GUILDS.GUILD_NAME_ID, guild_name_id)
 
         return guild_id
 
@@ -221,7 +234,8 @@ class GamerBot(discord.AutoShardedClient):
     def _ingest_channel(db, channel):
         if isinstance(channel, discord.TextChannel): # only care about text channels
             channel_name_id = ingest_if_not_exist_returning(db, CHANNEL_NAMES, {CHANNEL_NAMES.CHANNEL_NAME:channel.name}, [CHANNEL_NAMES.ID])
-            channel_id = ingest_if_not_exist_returning(db, CHANNELS, {CHANNELS.UID:channel.id, CHANNELS.GUILD_ID:channel.guild.id, CHANNELS.CHANNEL_NAME_ID:channel_name_id}, [CHANNELS.UID])
+
+            channel_id = GamerBot._ingest_name_lookup_table(db, CHANNELS, CHANNELS.UID, channel.id, CHANNELS.CHANNEL_NAME_ID,  channel_name_id)
 
             return channel_id
         else:
