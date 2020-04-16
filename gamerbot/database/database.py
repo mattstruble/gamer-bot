@@ -288,9 +288,9 @@ class _UpdateDatabase(_ConditionalDatabase):
         self.values[value_name] = value
 
         if not self.set_called:
-            set_sql = " SET \"{}\".\"{}\" = %({})s".format(self.table.name, column, value_name)
+            set_sql = " SET \"{}\" = %({})s".format(column, value_name)
         else:
-            set_sql = ", \"{}\".\"{}\" = %({})s".format(self.table.name, column, value_name)
+            set_sql = ", \"{}\" = %({})s".format(column, value_name)
 
         self.sql += set_sql
 
