@@ -1,0 +1,14 @@
+# Pycharm
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Misc
+gamerbot.cfg.example
+schema/
+
+# Docker outputs
+build_docker.sh
+*.tar.gz
