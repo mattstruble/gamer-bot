@@ -132,3 +132,4 @@ dmypy.json
 .idea/
 
 gamerbot.cfg
+*.tar.gz
