@@ -1,11 +1,12 @@
 import discord
 
+from sigmod_fingerprinting.fingerprint import Fingerprint
 from .database.conditionals import Eq
 from .database.database import Database, Sum
 from .database.functions import ingest_if_not_exist_returning, fetchone_from_table
 from .database.ordering import Desc
 from .database.tables import *
-from .util.fingerprint import Fingerprint, template_match_fingerprints
+from .util.fingerprint import template_match_fingerprints
 
 
 class GamerBot(discord.AutoShardedClient):
